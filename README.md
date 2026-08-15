@@ -21,6 +21,7 @@ Plataforma de análisis de patrones de sueño. Registra tus noches y tus hábito
 - [Migraciones de base de datos](#migraciones-de-base-de-datos)
 - [Despliegue](#despliegue)
 - [Decisiones técnicas](#decisiones-técnicas)
+- [Uso de inteligencia artificial](#uso-de-inteligencia-artificial)
 - [Convenciones de commits](#convenciones-de-commits)
 
 ---
@@ -758,6 +759,18 @@ El proyecto se ha validado contra PostgreSQL real:
 - El frontend compila sin errores de tipos (`next build`, 7 rutas).
 
 No se incluye una suite de tests automatizada en el repositorio: se descartó de forma explícita durante la definición del alcance. Es la primera ampliación recomendada.
+
+---
+
+## Uso de inteligencia artificial
+
+Este proyecto se desarrolló utilizando **Claude Code (Anthropic)** como herramienta de apoyo. Se declara de forma explícita porque su alcance fue mayor que el de un autocompletado, y porque la transparencia sobre las herramientas empleadas forma parte de un trabajo profesional.
+
+**Aportación de la herramienta:** generación del código a partir de una especificación funcional y de arquitectura detallada, redacción de la documentación y de los comentarios del código, y ejecución de las verificaciones descritas en la sección anterior.
+
+**Decisiones tomadas y validadas por mí:** la definición del alcance funcional, la elección del stack y de la arquitectura en capas, y las decisiones de producto que la herramienta planteó como alternativas —autenticación por cookie httpOnly frente a `localStorage`, cuenta de demostración aislada por visitante frente a una compartida, la convención de emparejamiento entre sesiones y hábitos, y el alcance de las pruebas—. Cada iteración se probó manualmente sobre la aplicación en ejecución antes de darla por buena.
+
+La trazabilidad está también en el historial de git: los commits llevan el trailer `Co-Authored-By: Claude`.
 
 ---
 
