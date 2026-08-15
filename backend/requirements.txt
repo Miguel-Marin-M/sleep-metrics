@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# SleepMetrics - Dependencias del backend (Python 3.11)
+#
+# Todas las versiones estan fijadas (pinned) de forma exacta. En un despliegue
+# gratuito de Render no hay lockfile ni cache reproducible entre builds, por lo
+# que fijar versiones es la unica garantia de que un deploy futuro instale
+# exactamente lo mismo que funciona hoy.
+# ---------------------------------------------------------------------------
+
+# --- Framework web y servidor ASGI ----------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# --- Base de datos ---------------------------------------------------------
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# --- Validacion y configuracion -------------------------------------------
+pydantic==2.10.4
+# pydantic-settings es obligatorio en Pydantic v2: BaseSettings se extrajo del
+# paquete principal a partir de la v2 y vive ahora en este modulo.
+pydantic-settings==2.7.0
+# EmailStr de Pydantic requiere este validador como dependencia opcional.
+email-validator==2.2.0
+python-dotenv==1.0.1
+
+# --- Autenticacion ---------------------------------------------------------
+# python-jose firma y verifica los JWT. El extra [cryptography] usa la
+# implementacion nativa en C en lugar de la pura en Python: mas rapida y mejor
+# mantenida.
+python-jose[cryptography]==3.3.0
+
+passlib[bcrypt]==1.7.4
+# IMPORTANTE: bcrypt se fija a la serie 4.0.x a proposito. passlib 1.7.4 lee el
+# atributo bcrypt.__about__ para detectar la version del backend, atributo que
+# desaparecio en bcrypt 4.1+. Con bcrypt>=4.1 passlib emite un error ruidoso en
+# el arranque ("error reading bcrypt version"). Fijar 4.0.1 lo evita.
+bcrypt==4.0.1
+
+# --- Utilidades ------------------------------------------------------------
+# FastAPI necesita python-multipart para parsear formularios (OAuth2 password
+# flow del formulario de login de /docs).
+python-multipart==0.0.20
