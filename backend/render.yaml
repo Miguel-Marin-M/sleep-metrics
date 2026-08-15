@@ -1,0 +1,92 @@
+# ===========================================================================
+# SleepMetrics - Infraestructura como codigo para Render (Blueprint)
+#
+# Este archivo permite crear el servicio desde el repositorio en lugar de
+# rellenar el formulario web a mano: en Render, "New +" -> "Blueprint" -> se
+# selecciona el repo y se lee esta definicion.
+#
+# Es opcional: el README documenta tambien el alta manual paso a paso. Se
+# incluye porque deja la configuracion del despliegue versionada y revisable,
+# que es la practica correcta en un proyecto real.
+# ===========================================================================
+
+services:
+  - type: web
+    name: sleepmetrics-api
+    runtime: python
+    plan: free
+    region: oregon
+
+    # El codigo del backend vive en la subcarpeta backend/ del repositorio.
+    rootDir: backend
+
+    pythonVersion: "3.11"
+
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+
+    # start.sh aplica las migraciones de Alembic y solo despues levanta uvicorn.
+    startCommand: bash start.sh
+
+    # Render consulta este endpoint para decidir si el despliegue esta sano.
+    # /health comprueba tambien la conectividad con la base de datos, asi que
+    # un despliegue con la DATABASE_URL mal configurada se marca como fallido
+    # en lugar de quedarse online sirviendo errores.
+    healthCheckPath: /health
+
+    envVars:
+      # sync: false marca la variable como secreta: NO se guarda en este
+      # archivo (que se versiona en git) y hay que introducirla a mano en el
+      # panel de Render la primera vez.
+      - key: DATABASE_URL
+        sync: false
+
+      - key: JWT_SECRET_KEY
+        # generateValue le pide a Render que genere un valor aleatorio seguro
+        # en el primer despliegue. Evita el riesgo de desplegar con un secreto
+        # copiado del .env.example.
+        generateValue: true
+
+      - key: CORS_ORIGINS
+        sync: false # https://tu-proyecto.vercel.app
+
+      - key: ENVIRONMENT
+        value: production
+
+      - key: JWT_ALGORITHM
+        value: HS256
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "10080"
+
+      - key: COOKIE_NAME
+        value: sleepmetrics_access_token
+
+      # En produccion frontend (Vercel) y backend (Render) son sitios
+      # distintos: la cookie es cross-site y el navegador solo la envia con
+      # SameSite=None, que a su vez exige Secure=true.
+      - key: COOKIE_SECURE
+        value: "true"
+
+      - key: COOKIE_SAMESITE
+        value: none
+
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+      # -- Cuentas de demostracion ---------------------------------------
+      # Cada visitante que pulsa "Probar la aplicacion" recibe una cuenta
+      # desechable sembrada con datos ficticios, que se elimina sola pasadas
+      # DEMO_ACCOUNT_TTL_HOURS horas.
+      - key: DEMO_ACCOUNT_ENABLED
+        value: "true"
+
+      - key: DEMO_ACCOUNT_TTL_HOURS
+        value: "24"
+
+      - key: DEMO_ACCOUNT_MAX_ACTIVE
+        value: "200"
+
+      # 90 dias es el minimo con el que las correlaciones del panel salen
+      # estables independientemente de la semilla del generador.
+      - key: DEMO_SEED_DAYS
+        value: "90"
