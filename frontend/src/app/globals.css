@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Estilos globales de SleepMetrics.
+ *
+ * Se mantiene al minimo a proposito: casi todo el estilado ocurre en los
+ * componentes mediante clases de Tailwind. Aqui solo viven las reglas que
+ * necesariamente son globales.
+ */
+
+@layer base {
+  html {
+    /* Desplazamiento suave al navegar con anclas. */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* El fondo se pinta de forma explicita: sin esto, el body seria
+       transparente y heredaria el color del navegador, que varia segun el
+       sistema operativo y el tema. */
+    @apply bg-page text-ink antialiased;
+  }
+
+  /*
+   * Indicador de foco visible en todo elemento interactivo.
+   *
+   * Es un requisito de accesibilidad, no una preferencia estetica: sin el, la
+   * aplicacion resulta imposible de usar con teclado, porque no hay forma de
+   * saber donde esta el cursor. Se usa :focus-visible y no :focus para que el
+   * anillo aparezca al navegar con teclado pero no al hacer clic con el raton.
+   */
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-series-1;
+  }
+
+  /*
+   * Respeta la preferencia del sistema de reducir el movimiento. Los usuarios
+   * con sensibilidad vestibular pueden sufrir mareos con las animaciones.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /*
+   * Trunca un texto a un numero concreto de lineas.
+   *
+   * Se define a mano en lugar de instalar @tailwindcss/line-clamp: en Tailwind
+   * 3.3+ la utilidad ya es nativa, pero declararla aqui garantiza el
+   * comportamiento sin depender de la version exacta del paquete.
+   */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
