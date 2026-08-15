@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# Python / backend
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Variables de entorno: NUNCA se versionan (contienen credenciales de Supabase
+# y el secreto de firma de los JWT). Solo se versionan los .env.example.
+# ---------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Node / frontend
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+build/
+.vercel
+next-env.d.ts
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Configuracion local de herramientas de desarrollo
+#
+# Contiene rutas absolutas de la maquina y preferencias personales, no forma
+# parte del proyecto.
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Editores y sistema operativo
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

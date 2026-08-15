@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Normalizacion de finales de linea.
+#
+# El proyecto se desarrolla en Windows y se despliega en Linux (Render). Sin
+# estas reglas, git convertiria start.sh a finales de linea CRLF al hacer
+# checkout en Windows, y al subirlo el interprete de Linux fallaria con el
+# error clasico:
+#
+#     /usr/bin/env: 'bash\r': No such file or directory
+#
+# Es una de las causas mas frecuentes de despliegue roto en equipos mixtos
+# Windows/Linux, y se previene en una linea.
+# ---------------------------------------------------------------------------
+
+# Normaliza automaticamente los archivos de texto en el repositorio.
+* text=auto eol=lf
+
+# Scripts de shell: SIEMPRE LF, incluso en checkout sobre Windows.
+*.sh text eol=lf
+
+# Archivos binarios: sin conversion alguna.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
