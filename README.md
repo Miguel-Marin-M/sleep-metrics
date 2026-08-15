@@ -768,7 +768,7 @@ Este proyecto se desarrolló utilizando **Claude Code (Anthropic)** como herrami
 
 **Aportación de la herramienta:** generación del código a partir de una especificación funcional y de arquitectura detallada, redacción de la documentación y de los comentarios del código, y ejecución de las verificaciones descritas en la sección anterior.
 
-**Decisiones tomadas y validadas por mí:** la definición del alcance funcional, la elección del stack y de la arquitectura en capas, y las decisiones de producto que la herramienta planteó como alternativas —autenticación por cookie httpOnly frente a `localStorage`, cuenta de demostración aislada por visitante frente a una compartida, la convención de emparejamiento entre sesiones y hábitos, y el alcance de las pruebas—. Cada iteración se probó manualmente sobre la aplicación en ejecución antes de darla por buena.
+**Decisiones tomadas y validadas por mí:** la definición del alcance funcional, la elección del stack y de la arquitectura en capas, y las decisiones de producto —autenticación por cookie httpOnly, cuenta de demostración aislada por visitante frente a una compartida, la convención de emparejamiento entre sesiones y hábitos, y el alcance de las pruebas—. Cada iteración se probó manualmente sobre la aplicación en ejecución antes de darla por buena.
 
 La trazabilidad está también en el historial de git: los commits llevan el trailer `Co-Authored-By: Claude`.
 
