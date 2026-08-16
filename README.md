@@ -1,4 +1,4 @@
-# SleepMetrics
+﻿# SleepMetrics
 
 Plataforma de análisis de patrones de sueño. Registra tus noches y tus hábitos diarios, calcula un **score de calidad de 0 a 100** con una fórmula ponderada y expone métricas agregadas y correlaciones entre hábitos y descanso.
 
@@ -130,14 +130,14 @@ Cada capa solo conoce a la inmediatamente inferior. Un router **nunca** toca la 
 
 ```
 sleep_metrics/
+├── render.yaml                       # Blueprint de Render (debe ir en la raíz)
 ├── db/
 │   └── schema.sql                    # Documentación de referencia del modelo
 ├── backend/
 │   ├── alembic/
 │   │   ├── env.py                    # Inyecta DATABASE_URL, expone Base.metadata
 │   │   ├── script.py.mako
-│   │   └── versions/
-│   │       └── 0001_initial_schema.py
+│   │   └── versions/                 # 0001_initial_schema, 0002_add_is_demo
 │   ├── app/
 │   │   ├── core/                     # config, database, security, dependencies
 │   │   ├── models/                   # Tablas SQLAlchemy
@@ -146,9 +146,9 @@ sleep_metrics/
 │   │   ├── services/                 # Lógica de negocio
 │   │   ├── routers/                  # Endpoints HTTP
 │   │   └── main.py                   # Ensamblado, CORS, manejo de errores
+│   ├── scripts/                      # Mantenimiento (purga de cuentas demo)
 │   ├── alembic.ini
 │   ├── requirements.txt
-│   ├── render.yaml                   # Infraestructura como código (opcional)
 │   ├── start.sh                      # Migraciones + arranque del servidor
 │   └── .env.example
 └── frontend/
@@ -576,7 +576,7 @@ alembic stamp 0001_initial_schema
 
    | Campo | Valor |
    |---|---|
-   | Name | `sleepmetrics-api` |
+   | Name | `sleep-metrics-api` |
    | Region | La misma que elegiste en Supabase |
    | Root Directory | `backend` |
    | Runtime | Python 3 |
@@ -606,9 +606,9 @@ alembic stamp 0001_initial_schema
    ==> Levantando servidor uvicorn en el puerto 10000...
    ```
 
-6. Comprueba que responde: `https://sleepmetrics-api.onrender.com/health` debe devolver `{"api":"ok","database":"ok"}`.
+6. Comprueba que responde: `https://sleep-metrics-api.onrender.com/health` debe devolver `{"api":"ok","database":"ok"}`.
 
-> Como alternativa al alta manual, el repositorio incluye [`backend/render.yaml`](backend/render.yaml): **New + → Blueprint** lee esa definición y crea el servicio ya configurado.
+> Como alternativa al alta manual, el repositorio incluye [`render.yaml`](render.yaml): **New + → Blueprint** lee esa definición y crea el servicio ya configurado.
 
 ### Paso 3: Desplegar el frontend en Vercel
 
@@ -624,7 +624,7 @@ alembic stamp 0001_initial_schema
 
    | Variable | Valor |
    |---|---|
-   | `NEXT_PUBLIC_API_URL` | `https://sleepmetrics-api.onrender.com` *(sin barra final)* |
+   | `NEXT_PUBLIC_API_URL` | `https://sleep-metrics-api.onrender.com` *(sin barra final)* |
 
 4. **Deploy**. Anota la URL resultante, por ejemplo `https://sleepmetrics.vercel.app`.
 
@@ -683,11 +683,25 @@ El dominio del sueño es **local** por naturaleza: «me acosté a las 23:30» si
 
 La consecuencia asumida es que las ventanas de «últimos 7 días» de la analítica se calculan con la hora del servidor, de modo que un usuario en un huso muy alejado podría ver una sesión entrar o salir de la ventana por unas horas. Manejarlo con precisión exigiría almacenar la zona horaria de cada usuario, algo fuera del alcance actual.
 
-### Pearson implementado a mano
+### Pearson implementado a mano, y cuándo callarse
 
 La correlación se calcula con aritmética estándar de Python en lugar de traer NumPy o SciPy: son dependencias de decenas de megabytes para una fórmula de cinco líneas, y el plan gratuito de Render tiene límites estrechos de memoria y de tiempo de compilación.
 
-Se exigen al menos 5 pares de datos para devolver un coeficiente. Con 2 o 3 puntos, casi cualquier nube de datos produce una correlación cercana a ±1 por puro azar; devolver `null` es más honesto que devolver un número sin respaldo.
+Lo interesante no es la fórmula, sino **cuándo la aplicación se permite hablar**. Hay tres tramos:
+
+| Muestras | Comportamiento |
+|---|---|
+| < 14 | No se calcula. Se indica cuántas noches faltan |
+| 14 – 29 | Se calcula, pero se presenta como **"tendencia preliminar"**, con el número de noches y un aviso de que puede cambiar |
+| ≥ 30 | Se afirma con lenguaje normal |
+
+**El umbral de 14 salió de una medición, no de una intuición.** Al construir el generador de datos de demostración se barrieron diez semillas sobre un historial que contenía una relación causal *real y fuerte* entre cafeína y calidad del sueño. Con unas 30 muestras, el coeficiente oscilaba entre **−0,60 y +0,07** solo por el azar del muestreo.
+
+Si con 30 muestras y una causa real el coeficiente baila así, con 5 —el umbral original— lo que se publicaba era ruido. Y no era ruido inocuo: la interfaz lo enunciaba con una frase afirmativa (*"cuanto mayor es la cafeína, peor tiende a ser tu score"*), de modo que alguien con seis noches registradas podía cambiar sus hábitos por una casualidad estadística. En una aplicación relacionada con la salud, ese es el error caro.
+
+La misma lógica aplica al **mejor y peor día de la semana**: un día necesita al menos 3 noches registradas para entrar en la comparación. Con una sola, *"tu peor día es el martes"* no describe un patrón, describe que el martes pasado se durmió mal.
+
+**Qué ve un usuario nuevo:** el score de cada noche funciona desde la primera, porque es una fórmula determinista sobre los datos de esa noche; las medias de 7 y 30 días son honestas desde el primer registro. Lo que espera son las conclusiones que de verdad requieren volumen.
 
 ### `bcrypt` fijado a la serie 4.0.x
 

@@ -5,14 +5,22 @@
 # rellenar el formulario web a mano: en Render, "New +" -> "Blueprint" -> se
 # selecciona el repo y se lee esta definicion.
 #
+# DEBE ESTAR EN LA RAIZ DEL REPOSITORIO. Render solo busca `render.yaml` en el
+# directorio raiz; si estuviera dentro de backend/, el flujo de Blueprint no lo
+# encontraria y la opcion no funcionaria.
+#
 # Es opcional: el README documenta tambien el alta manual paso a paso. Se
 # incluye porque deja la configuracion del despliegue versionada y revisable,
 # que es la practica correcta en un proyecto real.
+#
+# El `name` debe coincidir EXACTAMENTE con el del servicio ya creado. Render
+# empareja los servicios de un Blueprint por nombre, asi que un nombre distinto
+# no actualiza el servicio existente: crea uno nuevo en paralelo.
 # ===========================================================================
 
 services:
   - type: web
-    name: sleepmetrics-api
+    name: sleep-metrics-api
     runtime: python
     plan: free
     region: oregon
