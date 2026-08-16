@@ -76,15 +76,20 @@ class Settings(BaseSettings):
     # del plan gratuito: al superar el tope se eliminan las mas antiguas.
     DEMO_ACCOUNT_MAX_ACTIVE: int = Field(default=200, gt=0)
 
-    # Dias de historial ficticio que se generan en cada cuenta.
+    # Dias de historial ficticio que se generan en cada cuenta de demostracion.
     #
-    # 90 dias no es un numero redondo elegido al azar: es el minimo con el que
-    # las correlaciones del panel salen estables. Con 45 dias quedaban unas 30
-    # muestras utiles, y con esa cantidad el coeficiente de Pearson sobre un
-    # predictor discreto como los miligramos de cafeina oscilaba entre -0.60 y
-    # +0.07 solo con cambiar la semilla del generador: la calidad de la
-    # demostracion dependia de la suerte. A 90 dias el coeficiente se estabiliza
-    # y ninguna semilla probada produce un panel pobre.
+    # No es un requisito de la aplicacion: un usuario real ve su score desde la
+    # primera noche y sus medias desde el primer dia. Quien decide cuando una
+    # correlacion es publicable es el servicio de analitica, con sus propios
+    # umbrales.
+    #
+    # El valor es 90 porque una demostracion debe ensenar el panel COMPLETO
+    # desde el primer segundo, correlaciones incluidas. Con 45 dias quedaban
+    # unas 30 muestras utiles y el coeficiente de Pearson sobre un predictor
+    # discreto como los miligramos de cafeina oscilaba entre -0.60 y +0.07 solo
+    # con cambiar la semilla: lo bien o mal que luciera la demo dependia de la
+    # suerte. A 90 dias ninguna de las diez semillas probadas produce un panel
+    # pobre.
     DEMO_SEED_DAYS: int = Field(default=90, gt=0, le=365)
 
     # -- Servidor -----------------------------------------------------------
