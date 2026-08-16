@@ -34,11 +34,37 @@ WEEKDAY_NAMES = [
 
 # Numero minimo de pares (habito, score) para calcular una correlacion.
 #
-# Por debajo de este umbral el coeficiente de Pearson es estadisticamente
-# inutil: con 2 o 3 puntos casi cualquier nube de datos produce una correlacion
-# cercana a 1 o -1 por puro azar. Devolver None es mas honesto que devolver un
-# numero grande sin respaldo.
-MIN_CORRELATION_SAMPLES = 5
+# El umbral estuvo en 5 y se subio a 14 (dos semanas de registro) por evidencia
+# medida, no por intuicion: al construir el generador de datos de demostracion
+# se barrieron diez semillas sobre un historial que contenia una relacion causal
+# REAL y fuerte entre cafeina y calidad del sueno. Con unas 30 muestras el
+# coeficiente de Pearson oscilaba entre -0.60 y +0.07 solo por el azar del
+# muestreo.
+#
+# Si con 30 muestras y una causa real el coeficiente baila asi, con 5 lo que se
+# publica es ruido. Y no es ruido inocuo: la aplicacion lo presenta con una
+# frase afirmativa ("cuanto mayor es la cafeina, peor tiende a ser tu score"), de
+# modo que un usuario podria cambiar sus habitos por una casualidad estadistica.
+# En una aplicacion relacionada con la salud, ese es el error caro.
+MIN_CORRELATION_SAMPLES = 14
+
+# Numero de muestras a partir del cual la correlacion deja de anunciarse como
+# preliminar.
+#
+# Entre MIN_CORRELATION_SAMPLES y este valor el coeficiente ya es informativo
+# pero sigue siendo inestable, asi que se calcula y se muestra acompanado de una
+# advertencia explicita en lugar de con lenguaje afirmativo. Es el punto medio
+# honesto entre no ensenar nada durante un mes y afirmar de mas.
+RELIABLE_CORRELATION_SAMPLES = 30
+
+# Sesiones minimas en un mismo dia de la semana para que ese dia pueda ser
+# elegido como el mejor o el peor.
+#
+# Con una sola noche registrada en cada dia, "tu mejor dia es el miercoles" no
+# describe un patron: describe que el miercoles pasado se durmio bien. Exigir
+# tres repeticiones convierte la afirmacion en algo que empieza a significar
+# alguna cosa.
+MIN_WEEKDAY_SESSIONS = 3
 
 
 class AnalyticsService:
@@ -211,19 +237,37 @@ class AnalyticsService:
             for weekday, scores in sorted(buckets.items())
         ]
 
+    def _eligible_weekdays(self, sessions: list[SleepSession]) -> list[WeekdayAverage]:
+        """Dias de la semana con repeticiones suficientes para ser comparados.
+
+        Se descartan los que no llegan a MIN_WEEKDAY_SESSIONS. Sin este filtro,
+        un usuario con una semana de historial veria "tu peor dia es el martes"
+        basado en una unica noche, que es una anecdota presentada como patron.
+        """
+        return [
+            average
+            for average in self._weekday_averages(sessions)
+            if average.sessions_count >= MIN_WEEKDAY_SESSIONS
+        ]
+
     def _best_weekday(self, sessions: list[SleepSession]) -> WeekdayAverage | None:
-        """Dia de la semana con mejor score medio."""
-        averages = self._weekday_averages(sessions)
-        if not averages:
+        """Dia de la semana con mejor score medio.
+
+        Devuelve None mientras ningun dia acumule repeticiones suficientes; el
+        frontend muestra entonces "Sin datos" en lugar de una conclusion
+        prematura.
+        """
+        eligible = self._eligible_weekdays(sessions)
+        if not eligible:
             return None
-        return max(averages, key=lambda item: item.average_score)
+        return max(eligible, key=lambda item: item.average_score)
 
     def _worst_weekday(self, sessions: list[SleepSession]) -> WeekdayAverage | None:
         """Dia de la semana con peor score medio."""
-        averages = self._weekday_averages(sessions)
-        if not averages:
+        eligible = self._eligible_weekdays(sessions)
+        if not eligible:
             return None
-        return min(averages, key=lambda item: item.average_score)
+        return min(eligible, key=lambda item: item.average_score)
 
     # -----------------------------------------------------------------------
     # Correlaciones
@@ -318,16 +362,26 @@ class AnalyticsService:
         if coefficient is None:
             if sample_size < MIN_CORRELATION_SAMPLES:
                 faltan = MIN_CORRELATION_SAMPLES - sample_size
+                noches = "noche" if faltan == 1 else "noches"
                 return (
-                    f"Datos insuficientes: se necesitan {faltan} registro(s) mas "
-                    "con habitos y sueno en el mismo dia."
+                    f"Aun no hay datos suficientes: faltan {faltan} {noches} con habitos "
+                    "y sueno registrados el mismo dia. Con menos, el resultado seria azar."
                 )
             return "Sin variacion suficiente en este habito para analizar su efecto."
 
         magnitude = abs(coefficient)
 
+        # Entre el minimo y el umbral de fiabilidad el coeficiente ya es
+        # informativo pero todavia inestable, asi que se antepone una
+        # advertencia y NUNCA se usa lenguaje afirmativo.
+        preliminary = sample_size < RELIABLE_CORRELATION_SAMPLES
+        prefix = "Tendencia preliminar. " if preliminary else ""
+
         if magnitude < 0.2:
-            return f"Sin relacion apreciable entre {factor.lower()} y tu calidad de sueno."
+            return (
+                f"{prefix}Sin relacion apreciable entre {factor.lower()} y tu calidad "
+                "de sueno."
+            )
 
         if magnitude < 0.4:
             strength = "debil"
@@ -336,13 +390,19 @@ class AnalyticsService:
         else:
             strength = "fuerte"
 
-        if coefficient < 0:
+        direction = "peor" if coefficient < 0 else "mejor"
+        relation = "inversa" if coefficient < 0 else "directa"
+
+        if preliminary:
+            # Formulacion tentativa: describe lo observado hasta ahora y avisa
+            # de que puede cambiar, en lugar de enunciar una regla.
             return (
-                f"Relacion inversa {strength}: cuanto mayor es {factor.lower()}, "
-                "peor tiende a ser tu score."
+                f"Tendencia preliminar ({sample_size} noches): por ahora, a mayor "
+                f"{factor.lower()} tu score tiende a ser {direction}. Necesita mas "
+                "registros para confirmarse."
             )
 
         return (
-            f"Relacion directa {strength}: cuanto mayor es {factor.lower()}, "
-            "mejor tiende a ser tu score."
+            f"Relacion {relation} {strength}: cuanto mayor es {factor.lower()}, "
+            f"{direction} tiende a ser tu score."
         )
