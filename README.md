@@ -2,6 +2,30 @@
 
 Plataforma de análisis de patrones de sueño. Registra tus noches y tus hábitos diarios, calcula un **score de calidad de 0 a 100** con una fórmula ponderada y expone métricas agregadas y correlaciones entre hábitos y descanso.
 
+![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_18-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Axios](https://img.shields.io/badge/Axios-5A29E4?style=flat-square&logo=axios&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5BF?style=flat-square)
+
+![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Pydantic](https://img.shields.io/badge/Pydantic_v2-E92063?style=flat-square&logo=pydantic&logoColor=white)
+
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy_2.0-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white)
+![Alembic](https://img.shields.io/badge/Alembic-6BA81E?style=flat-square)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
+
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
+![bcrypt](https://img.shields.io/badge/bcrypt-525252?style=flat-square)
+
+![AI tool: Claude](https://img.shields.io/badge/AI_tool:_Claude-D97757?style=flat-square&logo=claude&logoColor=white)
+
+![Deployment: Vercel + Render](https://img.shields.io/badge/Deployment:_Vercel_+_Render-000000?style=flat-square&logo=vercel&logoColor=white)
+
 **Demo:** **[sleep-metrics-kappa.vercel.app](https://sleep-metrics-kappa.vercel.app)** · **API:** [sleep-metrics-api.onrender.com](https://sleep-metrics-api.onrender.com/health)
 
 > **Pruébalo sin registrarte.** El botón *"Probar sin registrarme"* del login crea al instante una cuenta temporal, con tres meses de datos de ejemplo, exclusiva para ti. Puedes usarla como quieras: se elimina sola a las 24 horas.
