@@ -75,17 +75,21 @@ Backend en **Render** · Base de datos en **Supabase** · Frontend en **Vercel**
 ### Vista general
 
 ```
-┌──────────────────────┐         ┌──────────────────────┐        ┌────────────────────┐
-│   NAVEGADOR          │  HTTPS  │   RENDER             │  TLS   │   SUPABASE         │
-│                      │ ──────► │                      │ ─────► │                    │
-│  Next.js (Vercel)    │         │  FastAPI + Uvicorn   │        │  PostgreSQL 15     │
-│  React · Tailwind    │ ◄────── │  Alembic al arrancar │ ◄───── │  Session Pooler    │
-│  Axios · Recharts    │  JSON   │                      │        │                    │
-└──────────────────────┘         └──────────────────────┘        └────────────────────┘
-         │                                  ▲
-         │  Cookie httpOnly (JWT, SameSite=None; Secure)
-         └──────────────────────────────────┘
+┌───────────────┐        ┌────────────────────────┐      ┌──────────────────┐      ┌──────────────┐
+│  NAVEGADOR    │        │  VERCEL                │      │  RENDER          │      │  SUPABASE    │
+│               │ HTTPS  │                        │ HTTPS│                  │ TLS  │              │
+│  React        │ ─────► │  Next.js (App Router)  │ ────►│  FastAPI+Uvicorn │ ────►│ PostgreSQL15 │
+│  Tailwind     │        │                        │      │                  │      │ Session      │
+│  Axios        │ ◄───── │  rewrite /api/* ───────┼──────┤  Alembic al      │ ◄────┤ Pooler       │
+│  Recharts     │  JSON  │                        │      │  arrancar        │      │              │
+└───────────────┘        └────────────────────────┘      └──────────────────┘      └──────────────┘
+        │                            ▲
+        │  Cookie httpOnly (JWT, SameSite=Lax; Secure)
+        │  De PRIMERA PARTE: el navegador solo habla con el dominio de Vercel
+        └────────────────────────────┘
 ```
+
+El navegador **nunca contacta con Render directamente**. Pide a `/api/...` sobre su propio origen y Vercel reenvía por detrás. Eso convierte la cookie de sesión en propia en lugar de de terceros, que es lo único que la mantiene viva en los navegadores actuales — ver [Decisiones técnicas](#el-frontend-hace-de-proxy-hacia-la-api).
 
 ### Arquitectura del backend: monolito en capas
 
@@ -596,7 +600,7 @@ alembic stamp 0001_initial_schema
    | `ENVIRONMENT` | `production` |
    | `CORS_ORIGINS` | *(pendiente: la URL de Vercel, se rellena en el paso 4)* |
    | `COOKIE_SECURE` | `true` |
-   | `COOKIE_SAMESITE` | `none` |
+   | `COOKIE_SAMESITE` | `lax` |
    | `PYTHON_VERSION` | `3.11.9` |
 
 5. **Create Web Service**. En el log de despliegue deberías ver:
@@ -626,7 +630,8 @@ alembic stamp 0001_initial_schema
 
    | Variable | Valor |
    |---|---|
-   | `NEXT_PUBLIC_API_URL` | `https://sleep-metrics-api.onrender.com` *(sin barra final)* |
+   | `NEXT_PUBLIC_API_URL` | `/api` |
+   | `BACKEND_ORIGIN` | `https://sleep-metrics-api.onrender.com` *(sin barra final)* |
 
 4. **Deploy**. Anota la URL resultante, por ejemplo `https://sleepmetrics.vercel.app`.
 
@@ -659,6 +664,23 @@ Render redesplegará automáticamente. **Este paso no es opcional:** sin él, el
 ---
 
 ## Decisiones técnicas
+
+### El frontend hace de proxy hacia la API
+
+Las llamadas del navegador salen hacia `/api/...`, es decir hacia el mismo origen que sirve la aplicación, y un `rewrite` de Next.js las reenvía a Render por detrás. El navegador nunca contacta con el backend directamente.
+
+**No es una preferencia de estilo: sin esto, el despliegue no funciona.** La primera versión llamaba directamente a `sleep-metrics-api.onrender.com` desde `sleep-metrics-kappa.vercel.app`. Ambos dominios están en la Public Suffix List, así que para el navegador son sitios incuestionablemente distintos y la cookie de sesión era **de terceros**.
+
+`SameSite=None; Secure` debería bastar según la especificación, pero los navegadores llevan años restringiendo las cookies de terceros: Safari las bloquea por defecto y Chrome también en incógnito. El síntoma era desconcertante y merece la pena describirlo, porque cuesta de diagnosticar:
+
+> Pulsabas *"Probar sin registrarme"*, **la cuenta se creaba correctamente en la base de datos**, y aun así la aplicación te devolvía al login. La petición salía, el backend respondía 201 con su `Set-Cookie`, y el navegador descartaba la cookie en silencio. El panel cargaba, pedía sus datos, recibía un 401 y el interceptor de Axios rebotaba al login.
+
+Pasando por el proxy, la respuesta le llega al navegador desde el propio dominio de la aplicación: la cookie es **de primera parte** y ningún navegador la bloquea. Dos efectos secundarios, ambos buenos:
+
+- **Desaparece el CORS.** Ya no hay petición cross-origin que autorizar.
+- **Se vuelve a `SameSite=Lax`**, lo que restaura la protección frente a CSRF que `None` obligaba a ceder.
+
+La alternativa habría sido un dominio propio con dos subdominios (`app.` y `api.`), que resuelve lo mismo por la vía de compartir dominio registrable, pero cuesta dinero.
 
 ### Autenticación en cookie httpOnly y no en localStorage
 

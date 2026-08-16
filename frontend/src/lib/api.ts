@@ -12,14 +12,22 @@ import axios, { AxiosError, type AxiosInstance } from 'axios'
 import type { ApiErrorBody } from '@/types/api'
 
 /**
- * URL base de la API.
+ * URL base de la API, tal como la ve el NAVEGADOR.
  *
- * Se lee de una variable NEXT_PUBLIC_ porque este codigo se ejecuta en el
- * navegador. El valor de respaldo apunta al backend local para que un `npm run
- * dev` recien clonado funcione sin configuracion previa.
+ * Por defecto es la ruta relativa `/api`, no la URL del backend. Las peticiones
+ * salen hacia el mismo origen que sirve la aplicacion y es el proxy declarado
+ * en `next.config.mjs` quien las reenvia a Render.
+ *
+ * Esa indireccion es la que mantiene viva la cookie de sesion: si el navegador
+ * llamara directamente a `*.onrender.com` desde `*.vercel.app`, la cookie seria
+ * de terceros y los navegadores modernos la descartan. Yendo por el mismo
+ * origen es de primera parte y nadie la bloquea. La explicacion completa esta
+ * en el comentario del `rewrites()` de next.config.mjs.
+ *
+ * Sigue siendo configurable por si alguna vez se sirve la API en otro sitio,
+ * pero el valor correcto en este despliegue es `/api`.
  */
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '/api'
 
 /** Ruta a la que se redirige cuando la sesion deja de ser valida. */
 const LOGIN_PATH = '/login'
