@@ -468,14 +468,22 @@ cd frontend
 npm install
 
 cp .env.example .env.local        # Windows: Copy-Item .env.example .env.local
-# NEXT_PUBLIC_API_URL=http://localhost:8000
 
 npm run dev
 ```
 
+El `.env.example` ya trae los dos valores correctos y no hay que editarlo:
+
+```env
+BACKEND_ORIGIN=http://localhost:8000    # a donde reenvia el proxy (solo servidor)
+NEXT_PUBLIC_API_URL=/api                # lo que ve el navegador
+```
+
 Aplicación en `http://localhost:3000`.
 
-> **Sobre las cookies en desarrollo:** `localhost:3000` y `localhost:8000` se consideran el mismo *site* (el puerto no cuenta para `SameSite`), por lo que `COOKIE_SAMESITE=lax` y `COOKIE_SECURE=false` funcionan sin HTTPS. En producción los valores son distintos, ver la sección de despliegue.
+> **En local se usa el mismo proxy que en producción.** Las llamadas salen hacia `localhost:3000/api/...` y Next.js las reenvía a `localhost:8000`. Es intencional: el entorno de desarrollo reproduce el camino real de las peticiones, de modo que un problema de cookies o de rutas aparece en tu máquina y no al desplegar.
+>
+> Con el proxy, el navegador solo ve un origen, así que `COOKIE_SAMESITE=lax` y `COOKIE_SECURE=false` funcionan sin HTTPS.
 
 ---
 
@@ -598,7 +606,6 @@ alembic stamp 0001_initial_schema
    | `DATABASE_URL` | La cadena del Session Pooler del paso 1 |
    | `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
    | `ENVIRONMENT` | `production` |
-   | `CORS_ORIGINS` | *(pendiente: la URL de Vercel, se rellena en el paso 4)* |
    | `COOKIE_SECURE` | `true` |
    | `COOKIE_SAMESITE` | `lax` |
    | `PYTHON_VERSION` | `3.11.9` |
@@ -633,33 +640,25 @@ alembic stamp 0001_initial_schema
    | `NEXT_PUBLIC_API_URL` | `/api` |
    | `BACKEND_ORIGIN` | `https://sleep-metrics-api.onrender.com` *(sin barra final)* |
 
-4. **Deploy**. Anota la URL resultante, por ejemplo `https://sleepmetrics.vercel.app`.
+4. **Deploy**. Anota la URL resultante, por ejemplo `https://sleep-metrics-kappa.vercel.app`.
 
-### Paso 4: Cerrar el círculo del CORS
-
-Vuelve a Render y actualiza `CORS_ORIGINS` con la URL exacta de Vercel:
-
-```
-CORS_ORIGINS=https://sleepmetrics.vercel.app
-```
-
-Render redesplegará automáticamente. **Este paso no es opcional:** sin él, el navegador bloqueará todas las peticiones y la aplicación no podrá ni iniciar sesión.
-
-> El valor debe ser el origen **exacto**, sin barra final. No se admite `*`: la especificación de CORS lo prohíbe cuando se permiten credenciales, y aquí son imprescindibles porque la sesión viaja en una cookie.
+> **No hace falta configurar CORS.** El navegador solo habla con el dominio de Vercel y es el servidor de Next.js quien contacta con Render, así que no existe petición cross-origin que autorizar. La variable `CORS_ORIGINS` sigue existiendo en el backend por si algún día se consume la API desde otro cliente, pero en este despliegue no interviene.
 
 ### Verificación final
 
 1. Abre la URL de Vercel.
-2. Crea una cuenta. En las herramientas de desarrollo, pestaña **Application → Cookies**, debe aparecer `sleepmetrics_access_token` con las marcas `HttpOnly`, `Secure` y `SameSite=None`.
+2. Pulsa **"Probar sin registrarme"**. En las herramientas de desarrollo, pestaña **Application → Cookies**, debe aparecer `sleepmetrics_access_token` **bajo el dominio de Vercel** —no bajo el de Render— con las marcas `HttpOnly`, `Secure` y `SameSite=Lax`.
 3. Registra una sesión de sueño y comprueba que aparece el score.
-4. Registra los hábitos de ese mismo día y verifica que el score se recalcula.
+4. Registra los hábitos de esa misma noche y verifica que el score se recalcula.
 5. Recarga la página: la sesión debe mantenerse.
+
+> Si la cookie aparece bajo el dominio de **Render**, el proxy no se está aplicando: revisa que `NEXT_PUBLIC_API_URL` valga `/api` y que hayas redesplegado en Vercel después de cambiarla, porque las variables de entorno no se aplican a un despliegue ya construido.
 
 ### Limitaciones conocidas del plan gratuito
 
 - **Arranque en frío de Render.** El servicio se suspende tras 15 minutos sin tráfico y el siguiente acceso tarda unos 50 segundos. Por eso el cliente de Axios usa un timeout de 30 s y muestra un mensaje específico. Se puede mitigar con un cron externo (por ejemplo [cron-job.org](https://cron-job.org)) que haga ping a `/health` cada 10 minutos.
 - **Pausa de Supabase.** Los proyectos gratuitos se pausan tras 7 días de inactividad y hay que reactivarlos desde el panel.
-- **Cookies de terceros.** La cookie de sesión es *cross-site* (`vercel.app` → `onrender.com`). Los navegadores están restringiendo progresivamente las cookies de terceros; si eso llegara a afectar al despliegue, la solución es servir ambos bajo un mismo dominio registrable (por ejemplo `app.tudominio.com` y `api.tudominio.com`), lo que convertiría la cookie en *same-site* y permitiría usar `SameSite=Lax`.
+- **Arranque en frío a través del proxy.** Las peticiones pasan ahora por Vercel, que tiene su propio límite de espera. Si Render lleva rato dormido, la primera petición puede agotarlo y devolver un error de pasarela antes de que el backend despierte. Basta con reintentar, pero es otra razón para el ping periódico a `/health`.
 
 ---
 
@@ -688,12 +687,14 @@ El JWT viaja en una cookie `httpOnly`, inaccesible desde JavaScript. Es la difer
 
 El coste de esa decisión es real y se asume de forma explícita:
 
-- Obliga a `withCredentials: true` en Axios y a `allow_credentials=True` con orígenes exactos en el CORS del backend.
-- Requiere `SameSite=None; Secure` en producción, al ser dominios distintos.
-- Añade dos endpoints (`/auth/me` y `/auth/logout`) que con localStorage no harían falta.
-- La protección de rutas se resuelve en el cliente y no en el middleware de Next.js: la cookie la emite el dominio del backend, así que el servidor de Vercel nunca la recibe. **Eso no es un problema de seguridad**, porque la barrera real es el backend, que exige un JWT válido en cada endpoint; el guardián del frontend es solo comodidad de navegación.
+- Obliga a `withCredentials: true` en Axios.
+- Añade dos endpoints (`/auth/me` y `/auth/logout`) que con localStorage no harían falta: el JavaScript no puede leer la cookie para saber quién es el usuario, ni borrarla para cerrar sesión.
+- **Obligó a montar el proxy descrito arriba.** Fue el coste más caro y no se vio venir hasta desplegar: con localStorage, llamar directamente a otro dominio no habría dado ningún problema.
+- La protección de rutas se resuelve en el cliente y no en el middleware de Next.js. **Eso no es un problema de seguridad**, porque la barrera real es el backend, que exige un JWT válido en cada endpoint; el guardián del frontend es solo comodidad de navegación.
 
-**CSRF:** `SameSite=None` reabre en teoría esa puerta. Está mitigado porque todos los endpoints que modifican estado consumen `application/json`, un `Content-Type` que obliga al navegador a lanzar un *preflight* `OPTIONS` que CORS rechaza para cualquier origen no autorizado. Un formulario HTML malicioso no puede emitir ese `Content-Type`.
+**CSRF:** con el proxy, la cookie es de primera parte y vuelve a `SameSite=Lax`, que por sí solo impide que un sitio ajeno dispare peticiones `POST` o `DELETE` con la sesión adjunta. Como segunda barrera, todos los endpoints que modifican estado consumen `application/json`, un `Content-Type` que un formulario HTML no puede emitir.
+
+En el diseño anterior —llamada directa con `SameSite=None`— esa segunda barrera era la única, y dependía por completo de la configuración de CORS. La solución al problema de las cookies de terceros arregló también esto.
 
 ### El score se persiste, no se calcula siempre al vuelo
 
