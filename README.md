@@ -2,9 +2,11 @@
 
 Plataforma de análisis de patrones de sueño. Registra tus noches y tus hábitos diarios, calcula un **score de calidad de 0 a 100** con una fórmula ponderada y expone métricas agregadas y correlaciones entre hábitos y descanso.
 
-**Demo:** _(pendiente de desplegar)_ · **API:** _(pendiente de desplegar)_
+**Demo:** **[sleep-metrics-kappa.vercel.app](https://sleep-metrics-kappa.vercel.app)** · **API:** [sleep-metrics-api.onrender.com](https://sleep-metrics-api.onrender.com/health)
 
 > **Pruébalo sin registrarte.** El botón *"Probar sin registrarme"* del login crea al instante una cuenta temporal, con tres meses de datos de ejemplo, exclusiva para ti. Puedes usarla como quieras: se elimina sola a las 24 horas.
+>
+> *La API está en el plan gratuito de Render, que suspende el servicio tras 15 minutos sin tráfico. Si es la primera visita del día, el primer clic puede tardar unos 50 segundos en responder.*
 
 ---
 
