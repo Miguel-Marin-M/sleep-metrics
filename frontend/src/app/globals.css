@@ -14,6 +14,17 @@
   html {
     /* Desplazamiento suave al navegar con anclas. */
     scroll-behavior: smooth;
+
+    /*
+     * La aplicacion tiene un unico tema, claro, y hay que declararlo.
+     *
+     * Sin esto, un dispositivo con el sistema en modo oscuro hace que el
+     * navegador dibuje los controles nativos (selectores de fecha y hora,
+     * autorrelleno, barras de desplazamiento) con su paleta oscura: texto
+     * claro sobre nuestro fondo claro, es decir ilegible. Es especialmente
+     * visible en Safari de iOS con los campos de fecha.
+     */
+    color-scheme: light;
   }
 
   body {
@@ -33,6 +44,104 @@
    */
   :focus-visible {
     @apply outline outline-2 outline-offset-2 outline-series-1;
+  }
+
+  /*
+   * =====================================================================
+   * CAMPOS DE FORMULARIO EN SAFARI / iOS
+   * =====================================================================
+   * Safari trata los inputs temporales (date, time, datetime-local) de forma
+   * distinta al resto de navegadores y provoca dos problemas independientes
+   * que se manifiestan igual: los campos parecen salirse de su contenedor.
+   *
+   * Se resuelve aqui, de forma centralizada, y no con clases sueltas en cada
+   * campo: son cinco formularios y la correccion se olvidaria en el proximo
+   * que se anada.
+   */
+
+  /*
+   * PROBLEMA 1: el ancho lo impone la UI interna del selector.
+   *
+   * Safari dimensiona estos campos segun su propio shadow DOM (el calendario,
+   * el reloj, los separadores) e ignora el `width: 100%` que se les da. El
+   * campo se desborda de la tarjeta que lo contiene.
+   *
+   * `min-width: 0` es la propiedad imprescindible y la que suele faltar:
+   * `max-width: 100%` por si solo no sirve, porque el minimo que impone la UI
+   * interna tiene prioridad sobre el. Es el mismo mecanismo de `min-width:
+   * auto` que desbordaba las tablas dentro del grid.
+   */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /*
+   * Safari centra verticalmente el valor y le da una altura variable, lo que
+   * descuadra la altura del campo respecto a los inputs normales. Alinearlo a
+   * la izquierda y fijarle una altura minima lo iguala con el resto.
+   */
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='time']::-webkit-date-and-time-value,
+  input[type='datetime-local']::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5em;
+  }
+
+  /*
+   * Los sub-elementos del shadow DOM traen su propio padding, que se suma al
+   * del input y lo hace mas alto y mas ancho de lo pedido.
+   */
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-fields-wrapper,
+  ::-webkit-datetime-edit-text,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding: 0;
+  }
+
+  /* El icono del selector agranda el campo si conserva su altura por defecto. */
+  input::-webkit-inner-spin-button,
+  input::-webkit-calendar-picker-indicator {
+    height: auto;
+  }
+
+  /*
+   * PROBLEMA 2: iOS amplia la pagina al enfocar un campo.
+   *
+   * Safari en iOS hace zoom sobre cualquier input cuyo `font-size` sea menor
+   * de 16px, y al desenfocar NO vuelve a su sitio: el usuario se queda con la
+   * pagina ampliada y recortada. Como los campos usan `text-sm` (14px), basta
+   * con tocar cualquiera de ellos para que todo parezca desbordarse.
+   *
+   * La correccion recomendada es subir a 16px unicamente en dispositivos
+   * tactiles. Se usa `pointer: coarse` en lugar de un punto de corte por ancho
+   * para que un iPad en horizontal tambien quede cubierto.
+   *
+   * NO se usa `user-scalable=no` en el viewport, que es el atajo habitual:
+   * impide al usuario ampliar la pagina y eso incumple las pautas de
+   * accesibilidad WCAG.
+   *
+   * `!important` es necesario aqui y no es pereza: la clase `text-sm` de
+   * Tailwind vive en la capa de utilidades, que gana siempre a la capa base
+   * por especificidad y por orden de capas.
+   */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   /*
