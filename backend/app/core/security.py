@@ -4,12 +4,16 @@ Este modulo no conoce ni la base de datos ni el framework web: recibe y
 devuelve tipos primitivos. Eso lo hace trivial de razonar y de probar.
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from app.core.config import settings
+
+logger = logging.getLogger("sleepmetrics.security")
 
 # ---------------------------------------------------------------------------
 # Hashing de contrasenas
@@ -40,12 +44,30 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
     passlib realiza la comparacion en tiempo constante, lo que evita filtrar
     informacion sobre el hash mediante ataques de temporizacion.
+
+    SOBRE EL ALCANCE DEL `except`
+    -----------------------------
+    Solo se captura `UnknownHashError`, que significa exactamente una cosa: el
+    valor almacenado en la columna no tiene formato de hash reconocible. Ese
+    caso si equivale a "estas credenciales no sirven" y devolver False es
+    correcto.
+
+    Cualquier otro error se deja PROPAGAR a proposito, para que se convierta en
+    un 500 con su traza en el log. La version anterior capturaba `ValueError`
+    entero, que es la clase padre, y eso enmascaraba fallos de configuracion del
+    backend de bcrypt haciendolos pasar por "contrasena incorrecta". El sintoma
+    resultante era desconcertante: un servidor con passlib en mal estado
+    respondia 401 a credenciales perfectamente validas, y toda la investigacion
+    apuntaba a la contrasena o a la base de datos en lugar de al proceso.
+
+    Un error de infraestructura debe parecer un error de infraestructura.
     """
     try:
         return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
-        # Un hash corrupto o con formato desconocido en la base de datos no
-        # debe tumbar la peticion: se trata como credenciales invalidas.
+    except UnknownHashError:
+        # El hash guardado no es interpretable (columna corrupta o migrada
+        # desde otro esquema de cifrado). No es un fallo del servidor.
+        logger.warning("Hash de contrasena con formato no reconocible en la base de datos.")
         return False
 
 
